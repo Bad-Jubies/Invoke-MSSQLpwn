@@ -16,4 +16,10 @@ Invoke-MSSQLpwn is a PowerShell tool that attempts to gain code execution on MSS
 | `Relay` | Specifies the attacking server to be connected to for an SMB relay attack. This uses the xp_dirtree procedure to connect to the SMB share. |
 | `database` | Specifies the database to be used in the connection string. The default is master. |
 
+## Examples
+
 ![Example](https://user-images.githubusercontent.com/62299138/114249179-7d6a6680-995f-11eb-91fa-f8628b4828a8.png)
+
+```powershell
+Invoke-MSSQL -Target "MSSQL1" -Link "MSSQL2" -LinkImpersonate "sa" -Command "calc.exe"
+```
