@@ -18,10 +18,10 @@ Invoke-MSSQLpwn is a PowerShell tool that attempts to gain code execution on MSS
 
 ## Examples
 
-![Example](https://user-images.githubusercontent.com/62299138/114249179-7d6a6680-995f-11eb-91fa-f8628b4828a8.png)
+![ExampleLink](https://user-images.githubusercontent.com/62299138/114249573-9fb0b400-9960-11eb-9fb5-c74a52363852.png)
 
 ```powershell
-Invoke-MSSQL -Target "MSSQL1" -Link "MSSQL2" -LinkImpersonate "sa" -Command "calc.exe"
+Invoke-MSSQL -Target "MSSQL1" -Impersonate "sa" -Link "MSSQL2" -LinkImpersonate "SqlSvc" -Command "calc.exe"
 ```
 
 ![dirtree](https://user-images.githubusercontent.com/62299138/114249432-33ce4b80-9960-11eb-9841-cdbd9edd8716.png)
